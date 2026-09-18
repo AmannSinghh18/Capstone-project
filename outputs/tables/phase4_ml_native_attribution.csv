@@ -1,0 +1,17 @@
+Model,Config,Climate,Macroeconomic,Commodity
+RandomForest,Full,12.024270056040798,9.664439583932358,78.31129036002685
+RandomForest,Climate_only,100.0,,
+RandomForest,Macro_only,,100.0,
+RandomForest,Commodity_only,,,100.0
+XGBoost,Full,11.081515081917638,30.669897027367536,58.24858789071482
+XGBoost,Climate_only,100.0,,
+XGBoost,Macro_only,,100.0,
+XGBoost,Commodity_only,,,100.0
+ElasticNet,Full,0.0,9.014253928431508,90.9857460715685
+ElasticNet,Climate_only,100.0,,
+ElasticNet,Macro_only,,100.0,
+ElasticNet,Commodity_only,,,100.0
+SVR,Full,12.480024380104672,36.62920550539869,50.89077011449664
+SVR,Climate_only,100.0,,
+SVR,Macro_only,,100.0,
+SVR,Commodity_only,,,100.0

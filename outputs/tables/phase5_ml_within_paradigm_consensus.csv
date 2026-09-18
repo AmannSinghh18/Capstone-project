@@ -1,0 +1,4 @@
+Category,Mean_SHAP_Share_%,Top_Model_Count,Top_Model_Share_%,Mean_Rank
+Climate,8.896452379515777,0,0.0,2.75
+Macroeconomic,21.494449011282523,0,0.0,2.25
+Commodity,69.60909860920171,4,100.0,1.0
