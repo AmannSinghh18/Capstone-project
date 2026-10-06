@@ -1,0 +1,4 @@
+Category,Mean_Econometric_Share_%,Native_Rank,Category_only_Mean_RMSE,Category_only_RMSE_Rank,Mean_RMSE_vs_Full,Mean_GPFI_RMSE_Loss,GPFI_Significant_Model_Count,GPFI_Model_Count,Diagnostic_Classification
+Climate,41.091362061258515,1,1.262993305128631,3,0.35177575202336503,-0.026335843213141624,0,4,Mixed / Inconclusive
+Macroeconomic,30.54222973159686,1,0.8033257626560838,1,-0.10789179044918235,0.1161468224127186,3,4,Synergistic Driver
+Commodity,28.366408207144627,1,1.0031684907409486,2,0.0919509376356824,0.7360141033389764,4,4,Synergistic Driver
