@@ -129,31 +129,24 @@ if not stab.empty:
     ).reset_index()
     tri = tri.merge(s, on="Category", how="left")
 
-# Phase 5.3: cross-paradigm comparison if econometric consensus tables exist.
-# This does not fabricate econometric results; it only consumes available tables.
-econ_candidates = [
-    "phase5_econometric_consensus.csv",
-    "phase4_econometric_attribution.csv",
-    "phase4_econometric_native_attribution.csv",
-]
-econ = None
-for name in econ_candidates:
-    path = os.path.join(TABLE_DIR, name)
-    if os.path.isfile(path):
-        econ = pd.read_csv(path)
-        break
-
-if econ is not None and "Category" in econ.columns:
+# Phase 5.3: cross-paradigm comparison with econometric consensus tables.
+econ_path = os.path.join(TABLE_DIR, "phase4_econometric_native_attribution.csv")
+if os.path.isfile(econ_path):
+    econ = pd.read_csv(econ_path)
+    full_econ = econ[econ["Config"] == "Full"].copy()
+    
+    econ_shares = full_econ[CATS].mean()
+    econ_df = pd.DataFrame({
+        "Category": CATS,
+        "Mean_Econometric_Share_%": [econ_shares[c] for c in CATS]
+    })
+    econ_df["Econometric_Rank"] = econ_df["Mean_Econometric_Share_%"].rank(ascending=False, method="min").astype(int)
+    
     ml_rank = consensus[["Category", "Mean_SHAP_Share_%"]].copy()
-    ml_rank["ML_Rank"] = ml_rank["Mean_SHAP_Share_%"].rank(ascending=False, method="min")
-    econ_cols = [c for c in econ.columns if c.lower() in
-                 {"mean_share_%", "share_%", "mean_attribution_%", "rank"}]
-    if econ_cols:
-        ec = econ[["Category", econ_cols[0]]].copy()
-        ec["Econometric_Rank"] = ec[econ_cols[0]].rank(ascending=False, method="min")
-        cross = ml_rank.merge(ec[["Category", "Econometric_Rank"]], on="Category", how="left")
-    else:
-        cross = ml_rank
+    ml_rank["ML_Rank"] = ml_rank["Mean_SHAP_Share_%"].rank(ascending=False, method="min").astype(int)
+    
+    cross = ml_rank.merge(econ_df, on="Category", how="left")
+    cross["Convergence"] = cross["ML_Rank"] == cross["Econometric_Rank"]
 else:
     cross = consensus[["Category", "Mean_SHAP_Share_%"]].copy()
     cross["Econometric_Rank"] = np.nan
