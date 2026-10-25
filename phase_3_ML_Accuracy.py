@@ -1,4 +1,4 @@
-import os, joblib, warnings
+import os, sys, joblib, warnings
 import numpy as np
 import pandas as pd
 import scipy.stats as st
@@ -7,6 +7,10 @@ from sklearn.model_selection import TimeSeriesSplit
 
 warnings.filterwarnings("ignore")
 BASE = os.path.dirname(os.path.abspath(__file__))
+if BASE not in sys.path:
+    sys.path.insert(0, BASE)
+from Phase_2_ML_Models.train_lgbm_and_stacking import TimeSeriesStackingRegressor
+
 DATA = os.path.join(BASE, "data")
 MODEL_DIR = os.path.join(BASE, "models")
 OUT = os.path.join(BASE, "outputs", "tables")
@@ -19,7 +23,8 @@ COMMODITY = ["wpi_primary_food_articles_yoy","wpi_manufactured_food_yoy","wpi_wh
 CLIMATE_RAW = ["rainfall_total_mm","rainfall_rate_mm_per_day","temp_mean_celsius","relative_humidity_2m_pct","surface_soil_wetness_index","wind_speed_10m_ms","solar_irradiance_kwm2"]
 CLIMATE = CLIMATE_RAW + [f"{x}_anom" for x in CLIMATE_RAW]
 CONFIGS = {"Full":CLIMATE+MACRO+COMMODITY+P,"Climate_only":CLIMATE+P,"Macro_only":MACRO+P,"Commodity_only":COMMODITY+P}
-MODEL_NAMES = ["RandomForest","XGBoost","ElasticNet","SVR"]
+MODEL_NAMES = ["RandomForest","XGBoost","ElasticNet","SVR","LightGBM","Stacking"]
+
 
 def cols_for(config, df):
     return [c for c in CONFIGS[config] if c in df.columns]

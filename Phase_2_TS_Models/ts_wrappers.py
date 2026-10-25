@@ -89,3 +89,40 @@ class RidgeARXWrapper:
 
     def predict(self, X):
         return self.pipeline.predict(X)
+
+
+class DFMWrapper:
+    """
+    Dynamic Factor Model / Factor-Augmented ARX (FAVAR) Wrapper.
+    Extracts k principal dynamic factors to overcome high-dimensional collinearity
+    and fits a regularized dynamic autoregressive model.
+    """
+    def __init__(self, n_factors=3, alpha=5.0):
+        self.n_factors = n_factors
+        self.alpha = alpha
+        self.scaler = StandardScaler()
+        self.ridge = Ridge(alpha=self.alpha, random_state=42)
+        self.pca = None
+
+    def fit(self, X, y):
+        X_df = X.values if isinstance(X, pd.DataFrame) else np.asarray(X)
+        y_arr = np.asarray(y)
+        X_scaled = self.scaler.fit_transform(X_df)
+        
+        n_comp = min(self.n_factors, X_scaled.shape[1], X_scaled.shape[0])
+        from sklearn.decomposition import PCA
+        self.pca = PCA(n_components=n_comp, random_state=42)
+        factors = self.pca.fit_transform(X_scaled)
+        
+        # Augment with raw features and factors
+        X_aug = np.column_stack([factors, X_scaled])
+        self.ridge.fit(X_aug, y_arr)
+        return self
+
+    def predict(self, X):
+        X_df = X.values if isinstance(X, pd.DataFrame) else np.asarray(X)
+        X_scaled = self.scaler.transform(X_df)
+        factors = self.pca.transform(X_scaled)
+        X_aug = np.column_stack([factors, X_scaled])
+        return self.ridge.predict(X_aug)
+

@@ -11,7 +11,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 if BASE not in sys.path:
     sys.path.insert(0, BASE)
 
-from Phase_2_TS_Models.ts_wrappers import SARIMAXWrapper, AutoARIMAWrapper, VARXWrapper, RidgeARXWrapper
+from Phase_2_TS_Models.ts_wrappers import SARIMAXWrapper, AutoARIMAWrapper, VARXWrapper, RidgeARXWrapper, DFMWrapper
 
 warnings.filterwarnings("ignore")
 
@@ -42,7 +42,8 @@ CONFIGS = {
     "Macro_only": MACRO + P,
     "Commodity_only": COMMODITY + P
 }
-MODEL_NAMES = ["SARIMAX", "AutoARIMA", "VARX", "Ridge_ARX"]
+MODEL_NAMES = ["SARIMAX", "AutoARIMA", "VARX", "Ridge_ARX", "DFM"]
+
 
 def cols_for(config, df):
     return [c for c in CONFIGS[config] if c in df.columns]
