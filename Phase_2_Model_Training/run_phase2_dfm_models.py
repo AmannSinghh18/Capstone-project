@@ -4,14 +4,14 @@ import joblib
 import warnings
 import numpy as np
 import pandas as pd
+from sklearn.metrics import root_mean_squared_error, r2_score
 
-# Add Project root to sys.path to allow imports
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(BASE_DIR)
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from Phase_2_TS_Models.ts_wrappers import SARIMAXWrapper, AutoARIMAWrapper, VARXWrapper, RidgeARXWrapper
+from Phase_2_Model_Training.ts_wrappers import DFMWrapper
 
 warnings.filterwarnings("ignore")
 
@@ -48,31 +48,24 @@ train_df = pd.read_csv(os.path.join(DATA_DIR, "train_processed.csv"))
 test_df = pd.read_csv(os.path.join(DATA_DIR, "test_processed.csv"))
 
 print("==================================================")
-print("PHASE 2 (TS): TIME SERIES MODELS ESTIMATION & FITTING")
+print("PHASE 2 (TS ADVANCED): DYNAMIC FACTOR MODEL (FAVAR)")
 print("==================================================")
 
-MODEL_CLASSES = {
-    "SARIMAX": SARIMAXWrapper,
-    "AutoARIMA": AutoARIMAWrapper,
-    "VARX": VARXWrapper,
-    "Ridge_ARX": RidgeARXWrapper
-}
+for config_name, feature_list in CONFIGS.items():
+    cols = [c for c in feature_list if c in train_df.columns]
+    X_tr, y_tr = train_df[cols], train_df[TARGET]
+    X_te, y_te = test_df[cols], test_df[TARGET]
+    
+    n_factors = 3 if len(cols) >= 10 else 2
+    model = DFMWrapper(n_factors=n_factors, alpha=5.0)
+    model.fit(X_tr, y_tr)
+    
+    pred_te = model.predict(X_te)
+    rmse = root_mean_squared_error(y_te, pred_te)
+    r2 = r2_score(y_te, pred_te)
+    print(f"DFM/FAVAR [{config_name}] (Factors: {n_factors}) -> Test RMSE: {rmse:.4f} | R2: {r2:.4f}")
+    
+    save_path = os.path.join(MODEL_DIR, f"DFM_{config_name}.joblib")
+    joblib.dump(model, save_path)
 
-# Fit and save all 16 TS Model-Config combinations
-for model_name, wrapper_cls in MODEL_CLASSES.items():
-    for config_name, feature_list in CONFIGS.items():
-        cols = [c for c in feature_list if c in train_df.columns]
-        X_tr = train_df[cols]
-        y_tr = train_df[TARGET]
-        
-        print(f"Fitting TS Model: {model_name} | Config: {config_name} (Features: {len(cols)})")
-        model = wrapper_cls()
-        model.fit(X_tr, y_tr)
-        
-        save_path = os.path.join(MODEL_DIR, f"{model_name}_{config_name}.joblib")
-        joblib.dump(model, save_path)
-        print(f"Saved checkpoint: {save_path}")
-
-print("==================================================")
-print("Phase 2 TS Model Training Complete.")
-print("==================================================")
+print("DFM checkpoints successfully saved to models/")

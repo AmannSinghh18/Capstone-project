@@ -7,14 +7,16 @@ from sklearn.model_selection import TimeSeriesSplit
 
 warnings.filterwarnings("ignore")
 BASE = os.path.dirname(os.path.abspath(__file__))
-if BASE not in sys.path:
-    sys.path.insert(0, BASE)
-from Phase_2_ML_Models.train_lgbm_and_stacking import TimeSeriesStackingRegressor
+PROJECT_ROOT = os.path.dirname(BASE)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+from Phase_2_Model_Training.train_lgbm_and_stacking import TimeSeriesStackingRegressor
 
-DATA = os.path.join(BASE, "data")
-MODEL_DIR = os.path.join(BASE, "models")
-OUT = os.path.join(BASE, "outputs", "tables")
+DATA = os.path.join(PROJECT_ROOT, "data")
+MODEL_DIR = os.path.join(PROJECT_ROOT, "models")
+OUT = os.path.join(PROJECT_ROOT, "outputs", "tables")
 os.makedirs(OUT, exist_ok=True)
+
 
 TARGET = "cpi_headline_yoy"
 P = ["cpi_headline_yoy_lag1", "cpi_headline_yoy_lag12"]

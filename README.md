@@ -2,7 +2,7 @@
 
 An end-to-end, dual-paradigm empirical framework for forecasting and diagnosing the drivers of India's **Headline Consumer Price Index (CPI) Year-over-Year (YoY) Inflation**.
 
-This project implements a **5-Phase Modular Architecture** across two distinct computational paradigms:
+This project implements a clean **5-Phase Unified Modular Architecture** integrating two distinct computational paradigms:
 1. **Machine Learning (ML) Paradigm** (ElasticNet, Random Forest, SVR, XGBoost, LightGBM, and Time-Series Stacking Ensemble with SHAP & GPFI attributions)
 2. **Time Series (TS) Econometric Paradigm** (SARIMAX, AutoARIMA, VARX, Ridge-ARX, and Dynamic Factor Models with SVAR Impulse Responses & FEVD)
 
@@ -16,44 +16,34 @@ Capstone-project/
 ├── master_capstone_dataset_2000_2026.csv      # Consolidated raw time-series dataset (2000-2026)
 ├── processed_capstone_dataset_2001_2025.csv   # Primary processed dataset (2001-2025)
 │
-├── Phase_1_Data_Prep/                        # ML Data Integration & Feature Engineering
+├── Phase_1_Data_and_Diagnostics/             # Phase 1: Data Integration & Stationarity Diagnostics
 │   ├── generate_datasets.py                  # Anomaly z-scores & 80/20 train/test split generator
+│   ├── run_phase1_ts_diagnostics.py          # Stationarity ADF and KPSS tests for all 45 features
 │   ├── master.ipynb                          # Notebook consolidating 2000-2026 dataset
 │   └── preprocessing.ipynb                   # Notebook consolidating 2001-2025 dataset
 │
-├── Phase_1_TS_Diagnostics/                   # Time Series Diagnostics & Stationarity
-│   └── run_phase1_ts_diagnostics.py          # Stationarity ADF and KPSS tests for all 45 features
-│
-├── Phase_2_ML_Models/                        # Machine Learning Model Estimation & Ensembling
+├── Phase_2_Model_Training/                   # Phase 2: ML & Econometric Model Estimation
 │   ├── ElasticNet.ipynb                      # ElasticNet grid search & checkpoint fitting
 │   ├── RandomForest.ipynb                    # Random Forest grid search & checkpoint fitting
 │   ├── SVR.ipynb                             # SVR grid search & checkpoint fitting
 │   ├── XGBoost.ipynb                         # XGBoost grid search & checkpoint fitting
-│   └── train_lgbm_and_stacking.py            # LightGBM & Time-Series Stacking Ensemble models
-│
-├── Phase_2_TS_Models/                        # Time Series Model Estimation & Wrappers
-│   ├── __init__.py                           # Package initialization
-│   ├── ts_wrappers.py                        # Scikit-learn compliant wrappers for SARIMAX, AutoARIMA, VARX, Ridge-ARX, DFM
+│   ├── train_lgbm_and_stacking.py            # LightGBM & Time-Series Stacking Ensemble models
+│   ├── ts_wrappers.py                        # Scikit-learn compliant wrappers (SARIMAX, AutoARIMA, VARX, Ridge-ARX, DFM)
 │   ├── run_phase2_ts_models.py               # Fits 16 baseline TS model-config combinations
 │   └── run_phase2_dfm_models.py              # Fits Dynamic Factor Models (FAVAR) across 4 configs
 │
-├── phase_3_ML_Accuracy.py                    # Phase 3 ML: Test set accuracy (RMSE, MAE, MAPE, R²) & HLN DM tests
-├── phase_3_TS_Accuracy.py                    # Phase 3 TS: Test set accuracy (RMSE, MAE, MAPE, R²) & HLN DM tests
+├── Phase_3_Forecast_and_Evaluation/          # Phase 3: Accuracy, Multi-Horizon & Robustness Evaluation
+│   ├── run_phase3_ml_accuracy.py             # ML test set accuracy (RMSE, MAE, MAPE, R²) & HLN DM tests
+│   ├── run_phase3_ts_accuracy.py             # TS test set accuracy (RMSE, MAE, MAPE, R²) & HLN DM tests
+│   ├── run_multi_horizon_forecasting.py      # Multi-horizon direct forecasting (h=1, 3, 6, 12 months)
+│   └── run_walk_forward_and_conformal.py     # Rolling walk-forward backtesting & 90%/95% Conformal Prediction intervals
 │
-├── Phase_3_MultiHorizon/                     # Multi-Horizon Direct Forecasting (h=1, 3, 6, 12 months)
-│   └── run_multi_horizon_forecasting.py      # Evaluates term-structure transmission across feature blocks
-│
-├── Phase_3_Evaluation_Advanced/              # Robustness & Uncertainty Quantification
-│   └── run_walk_forward_and_conformal.py     # Rolling walk-forward backtesting & 90%/95% Conformal Prediction Intervals
-│
-├── Phase_4_Feature_Attribution/              # Feature Attribution & Stability Analysis
+├── Phase_4_Attribution_and_Structural/       # Phase 4: Feature Attribution & SVAR Structural Analysis
 │   ├── run_phase4_metrics.py                 # ML SHAP values, GPFI permutation tests & stability metrics
-│   └── run_phase4_ts_metrics.py              # TS Econometric coefficient shares & GPFI metrics
+│   ├── run_phase4_ts_metrics.py              # TS Econometric coefficient shares & GPFI metrics
+│   └── run_structural_irf_fevd.py            # SVAR Orthogonalized Impulse Responses (IRF) & Variance Decomposition (FEVD)
 │
-├── Phase_4_TS_Structural_Analysis/           # SVAR Structural Shock Transmission
-│   └── run_structural_irf_fevd.py            # Orthogonalized Impulse Responses (IRF) & Variance Decomposition (FEVD)
-│
-├── Phase_5_Diagnostic_Synthesis/             # Multi-Paradigm Triangulation & Cross-Convergence
+├── Phase_5_Diagnostic_Synthesis/             # Phase 5: Multi-Paradigm Triangulation & Cross-Convergence
 │   ├── run_phase5_metrics.py                 # ML diagnostic triangulation & cross-paradigm synthesis
 │   └── run_phase5_ts_metrics.py              # TS diagnostic triangulation & consensus
 │
@@ -62,7 +52,8 @@ Capstone-project/
 │   └── test_processed.csv                    # 20% Chronological testing set (2021-2025)
 │
 ├── models/                                   # Checkpoints for 44 Serialized Models (.joblib)
-├── outputs/tables/                           # Exported CSV Result Tables
+├── outputs/                                  # Exported CSV Result Tables
+│   └── tables/                               # Consolidated tables across all phases
 └── preprocessing/                            # Raw data sources (CPI, IIP, WPI, Climate, Global Macro)
 ```
 
@@ -119,51 +110,51 @@ Capstone-project/
 
 ## 🚀 Execution Guide
 
-Run any phase or advanced module via standard terminal commands:
+Run any phase via standard terminal commands:
 
 ### Phase 1: Data Preparation & Diagnostics
 ```bash
-python Phase_1_Data_Prep/generate_datasets.py
-python Phase_1_TS_Diagnostics/run_phase1_ts_diagnostics.py
+python Phase_1_Data_and_Diagnostics/generate_datasets.py
+python Phase_1_Data_and_Diagnostics/run_phase1_ts_diagnostics.py
 ```
 
 ### Phase 2: Model Estimation
 ```bash
 # Baseline TS Models
-python Phase_2_TS_Models/run_phase2_ts_models.py
+python Phase_2_Model_Training/run_phase2_ts_models.py
 
 # Advanced Dynamic Factor Models (FAVAR)
-python Phase_2_TS_Models/run_phase2_dfm_models.py
+python Phase_2_Model_Training/run_phase2_dfm_models.py
 
 # Advanced ML Models (LightGBM & Stacking Ensemble)
-python Phase_2_ML_Models/train_lgbm_and_stacking.py
+python Phase_2_Model_Training/train_lgbm_and_stacking.py
 ```
 
 ### Phase 3: Out-of-Sample Accuracy & Multi-Horizon Evaluation
 ```bash
-# Standard ML Test Accuracy (6 Model Families)
-python phase_3_ML_Accuracy.py
+# ML Test Set Accuracy (6 Model Families)
+python Phase_3_Forecast_and_Evaluation/run_phase3_ml_accuracy.py
 
-# Standard TS Test Accuracy (5 Model Families)
-python phase_3_TS_Accuracy.py
+# TS Test Set Accuracy (5 Model Families)
+python Phase_3_Forecast_and_Evaluation/run_phase3_ts_accuracy.py
 
 # Direct Multi-Horizon Forecasting (h=1, 3, 6, 12 months)
-python Phase_3_MultiHorizon/run_multi_horizon_forecasting.py
+python Phase_3_Forecast_and_Evaluation/run_multi_horizon_forecasting.py
 
 # Rolling Walk-Forward Backtesting & Conformal Prediction Intervals
-python Phase_3_Evaluation_Advanced/run_walk_forward_and_conformal.py
+python Phase_3_Forecast_and_Evaluation/run_walk_forward_and_conformal.py
 ```
 
 ### Phase 4: Feature Attribution & Structural SVAR Analysis
 ```bash
 # ML Feature Attribution (SHAP, Permutation GPFI, Stability)
-python Phase_4_Feature_Attribution/run_phase4_metrics.py
+python Phase_4_Attribution_and_Structural/run_phase4_metrics.py
 
 # Time Series Feature Attribution (Coefficients, GPFI)
-python Phase_4_Feature_Attribution/run_phase4_ts_metrics.py
+python Phase_4_Attribution_and_Structural/run_phase4_ts_metrics.py
 
 # Structural SVAR Impulse Responses (IRF) & Variance Decomposition (FEVD)
-python Phase_4_TS_Structural_Analysis/run_structural_irf_fevd.py
+python Phase_4_Attribution_and_Structural/run_structural_irf_fevd.py
 ```
 
 ### Phase 5: Diagnostic Triangulation & Cross-Paradigm Convergence

@@ -12,7 +12,7 @@ PROJECT = os.path.dirname(BASE)
 if PROJECT not in sys.path:
     sys.path.insert(0, PROJECT)
 
-from Phase_2_TS_Models.ts_wrappers import SARIMAXWrapper, AutoARIMAWrapper, VARXWrapper, RidgeARXWrapper
+from Phase_2_Model_Training.ts_wrappers import SARIMAXWrapper, AutoARIMAWrapper, VARXWrapper, RidgeARXWrapper
 
 warnings.filterwarnings("ignore")
 
