@@ -4,7 +4,7 @@ An end-to-end, dual-paradigm empirical framework for forecasting and diagnosing 
 
 This project implements a clean **5-Phase Unified Modular Architecture** integrating two distinct computational paradigms:
 1. **Machine Learning (ML) Paradigm** (TimeSeriesStackingRegressor, ElasticNet, XGBoost, and SVR with SHAP & GPFI attributions)
-2. **Time Series (TS) Econometric Paradigm** (Dynamic Factor Models, Ridge-ARX, VARX, and AutoARIMA with SVAR Impulse Responses & FEVD)
+2. **Time Series (TS) Econometric Paradigm** (Bates-Granger Optimal Forecast Combination, Block-Structured Dynamic Factor Models, Regularized ARDL(p, q), and VARX with SVAR Impulse Responses & FEVD)
 
 ---
 
@@ -28,7 +28,8 @@ Capstone-project/
 │   ├── SVR.ipynb                             # SVR grid search & checkpoint fitting
 │   ├── XGBoost.ipynb                         # XGBoost grid search & checkpoint fitting
 │   ├── train_lgbm_and_stacking.py            # LightGBM & Time-Series Stacking Ensemble models
-│   ├── ts_wrappers.py                        # Scikit-learn compliant wrappers (AutoARIMA, VARX, Ridge-ARX, DFM)
+│   ├── ts_wrappers.py                        # Scikit-learn compliant wrappers (BatesGrangerCombination, BlockDFM, RegularizedARDL, VARX)
+│   ├── train_ts_models.py                    # Trains & serializes the streamlined 4 TS model architectures across 4 configs
 │   ├── run_phase2_ts_models.py               # Fits baseline TS model-config combinations
 │   └── run_phase2_dfm_models.py              # Fits Dynamic Factor Models (FAVAR) across 4 configs
 │
@@ -82,13 +83,18 @@ Capstone-project/
   - **Climate**: **Mixed / Inconclusive** (7.23% SHAP share, Rank 3 standalone RMSE 1.0117).
 
 ### 2. Time Series (TS) Econometric Paradigm
-- **Streamlined 4-Model Core**: **Dynamic Factor Models (DFM / FAVAR)**, **Ridge-ARX**, **VARX**, and **AutoARIMA**.
-- **Top Out-of-Sample Model**: **DFM (Macro_only config)** achieving **RMSE: 0.7853**, **$R^2$: 0.7825**, followed closely by **Ridge_ARX (Macro_only)** achieving **RMSE: 0.7864**, **$R^2$: 0.7819**.
-- **Structural Causal Diagnostic**: **SVAR** (Structural Vector Autoregression) estimating Orthogonalized Impulse Response Functions (IRF) and Forecast Error Variance Decomposition (FEVD).
+- **Streamlined 4-Model Core**:
+  - **Bates-Granger (1969) Optimal Econometric Combination**: Constrained optimization solving for variance-minimizing forecast weights across econometric base models.
+  - **Block-Structured Dynamic Factor Models (Block-DFM / FAVAR)**: Structural decomposition extracting dynamic latent factors across Macro, Food Commodity, and Climate blocks.
+  - **Regularized ARDL($p, q$)**: High-order Autoregressive Distributed Lag model capturing multi-month delayed pass-through shocks ($q \in \{1, 2\}$) under ElasticNet regularization.
+  - **VARX**: Vector Autoregression with exogenous covariate vectors.
+- **Definitive TS Champion**: **Bates-Granger Optimal Combination** achieving **RMSE: 0.7853**, **$R^2$: 0.7825** on `Macro_only`, and dominating the `Full` specification with **RMSE: 0.8023** ($R^2$: 0.7730).
+- **Delayed Pass-Through Gains**: **Regularized ARDL($p, q$)** cuts `Full` config RMSE from 0.8857 down to **0.8131** ($R^2$: 0.7668) by capturing distributed multi-month agricultural/commodity shocks.
+- **Structural Causal Diagnostic**: **SVAR** (Structural Vector Autoregression) retained in Phase 4 estimating Orthogonalized Impulse Response Functions (IRF) and Forecast Error Variance Decomposition (FEVD).
 - **Diagnostic Classification**:
-  - **Commodity**: **Core Driver** (36.47% Econometric share, Rank 1 native attribution, Rank 2 standalone RMSE 0.9560, positive GPFI loss significant in 4/4 models).
-  - **Macroeconomic**: **Synergistic Driver** (34.42% Econometric share, Rank 1 standalone RMSE 0.7898, positive GPFI loss in 2/4 models).
-  - **Climate**: **Mixed / Inconclusive** (29.12% Econometric share, Rank 3 standalone RMSE 1.1510).
+  - **Macroeconomic**: **Rank 1 Native Driver** (49.33% Econometric share, Rank 1 standalone RMSE 0.8130).
+  - **Commodity**: **Rank 2 Native Driver** (32.69% Econometric share, Rank 2 standalone RMSE 0.8554, with major delayed pass-through).
+  - **Climate**: **Rank 3 Driver** (17.98% Econometric share, Rank 3 standalone RMSE 0.9690).
 
 ### 3. Multi-Horizon Forecasting ($h = 1, 3, 6, 12$ Months)
 - **Short-Horizon Dominance ($h = 1$)**: Commodity features achieve the lowest RMSE (**1.1778**), driving immediate food-price spikes.
@@ -121,22 +127,19 @@ python Phase_1_Data_and_Diagnostics/run_phase1_ts_diagnostics.py
 
 ### Phase 2: Model Estimation
 ```bash
-# Baseline TS Models
-python Phase_2_Model_Training/run_phase2_ts_models.py
+# Time Series Models (Bates-Granger, Block-DFM, Regularized ARDL, VARX)
+python Phase_2_Model_Training/train_ts_models.py
 
-# Advanced Dynamic Factor Models (FAVAR)
-python Phase_2_Model_Training/run_phase2_dfm_models.py
-
-# Advanced ML Models (LightGBM & Stacking Ensemble)
+# Advanced ML Models (Stacking Ensemble, ElasticNet, XGBoost, SVR)
 python Phase_2_Model_Training/train_lgbm_and_stacking.py
 ```
 
 ### Phase 3: Out-of-Sample Accuracy & Multi-Horizon Evaluation
 ```bash
-# ML Test Set Accuracy (6 Model Families)
+# ML Test Set Accuracy (4 Streamlined Model Families)
 python Phase_3_Forecast_and_Evaluation/run_phase3_ml_accuracy.py
 
-# TS Test Set Accuracy (5 Model Families)
+# TS Test Set Accuracy (4 Streamlined Model Families)
 python Phase_3_Forecast_and_Evaluation/run_phase3_ts_accuracy.py
 
 # Direct Multi-Horizon Forecasting (h=1, 3, 6, 12 months)
@@ -176,9 +179,9 @@ All analytical tables are saved in `outputs/tables/`:
 | Output Table | Description |
 | :--- | :--- |
 | `phase1_ts_stationarity_diagnostics.csv` | ADF and KPSS stationarity test statistics & p-values for all 45 features. |
-| `phase3_ml_accuracy_table.csv` | Out-of-sample RMSE, MAE, MAPE, and $R^2$ across 6 ML model families. |
+| `phase3_ml_accuracy_table.csv` | Out-of-sample RMSE, MAE, MAPE, and $R^2$ across 4 ML model families. |
 | `phase3_ml_dm_significance_table.csv` | Harvey-Leybourne-Newbold Diebold-Mariano tests with BH-FDR p-values (ML). |
-| `phase3_ts_accuracy_table.csv` | Out-of-sample RMSE, MAE, MAPE, and $R^2$ across 5 TS model families. |
+| `phase3_ts_accuracy_table.csv` | Out-of-sample RMSE, MAE, MAPE, and $R^2$ across 4 TS model families. |
 | `phase3_ts_dm_significance_table.csv` | Diebold-Mariano configuration comparisons with BH-FDR correction (TS). |
 | `phase3_multi_horizon_accuracy.csv` | Out-of-sample accuracy across $h \in \{1, 3, 6, 12\}$ months. |
 | `phase3_walk_forward_backtest_accuracy.csv`| Rolling expanding-window backtesting performance from 2016 to 2025. |

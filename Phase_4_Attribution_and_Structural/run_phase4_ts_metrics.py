@@ -41,23 +41,58 @@ CONFIGS = {
     "Commodity_only": COMMODITY + P
 }
 GROUPS = {"Climate": CLIMATE, "Macroeconomic": MACRO, "Commodity": COMMODITY}
-MODEL_NAMES = ["DFM", "Ridge_ARX", "VARX", "AutoARIMA"]
+MODEL_NAMES = ["Bates_Granger", "DFM", "Ridge_ARDL", "VARX"]
 
 N_PERM = 100
 rng = np.random.default_rng(42)
 
 def extract_coefs(model, cols):
-    if hasattr(model, "pca") and hasattr(model, "ridge") and model.pca is not None:
-        n_comp = model.pca.n_components_
-        factor_weights = model.ridge.coef_[:n_comp]
-        direct_weights = model.ridge.coef_[n_comp:]
-        implied_weights = model.pca.components_.T @ factor_weights + direct_weights
-        return np.abs(implied_weights)
+    if hasattr(model, "weights_") and hasattr(model, "m_ardl"):
+        c_ardl = extract_coefs(model.m_ardl, cols)
+        c_dfm = extract_coefs(model.m_dfm, cols)
+        c_varx = extract_coefs(model.m_varx, cols)
+        w = model.weights_
+        return w[0] * c_ardl + w[1] * c_dfm + w[2] * c_varx
+    elif hasattr(model, "pcas") and hasattr(model, "reg"):
+        coefs = np.zeros(len(cols))
+        reg_coef = model.reg.coef_
+        p_indices = [i for i, c in enumerate(cols) if c in P]
+        if p_indices:
+            coefs[p_indices] = np.abs(reg_coef[:len(p_indices)])
+        fac_ptr = len(p_indices)
+        for g_name, g_cols in GROUPS.items():
+            act_cols = [c for c in g_cols if c in cols]
+            pca_key = g_name if g_name in model.pcas else ("Macro" if g_name == "Macroeconomic" and "Macro" in model.pcas else None)
+            if not act_cols or pca_key is None:
+                continue
+            pca = model.pcas[pca_key]
+            n_c = pca.n_components_
+            blk_weights = np.abs(pca.components_.T @ reg_coef[fac_ptr:fac_ptr + n_c])
+            fac_ptr += n_c
+            for c_name, w_val in zip(act_cols, blk_weights):
+                coefs[cols.index(c_name)] = w_val
+        return coefs
+    elif hasattr(model, "model") and hasattr(model.model, "coef_"):
+        aug_coefs = np.abs(model.model.coef_)
+        coefs = aug_coefs[:len(cols)].copy()
+        if hasattr(model, "aug_cols_"):
+            for i, c in enumerate(cols):
+                for lag in range(1, model.q_lags + 1):
+                    lag_name = f"{c}_lag{lag}"
+                    if lag_name in model.aug_cols_:
+                        coefs[i] += aug_coefs[model.aug_cols_.index(lag_name)]
+        return coefs
     elif hasattr(model, "pipeline"):
         pipe = model.pipeline
         reg = pipe.named_steps[pipe.steps[-1][0]]
         if hasattr(reg, "coef_"):
             return np.abs(reg.coef_)
+    elif hasattr(model, "pca") and hasattr(model, "ridge") and model.pca is not None:
+        n_comp = model.pca.n_components_
+        factor_weights = model.ridge.coef_[:n_comp]
+        direct_weights = model.ridge.coef_[n_comp:]
+        implied_weights = model.pca.components_.T @ factor_weights + direct_weights
+        return np.abs(implied_weights)
     elif hasattr(model, "model_res_") and model.model_res_ is not None:
         if hasattr(model.model_res_, "params"):
             params = model.model_res_.params
