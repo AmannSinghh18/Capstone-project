@@ -25,7 +25,7 @@ COMMODITY = ["wpi_primary_food_articles_yoy","wpi_manufactured_food_yoy","wpi_wh
 CLIMATE_RAW = ["rainfall_total_mm","rainfall_rate_mm_per_day","temp_mean_celsius","relative_humidity_2m_pct","surface_soil_wetness_index","wind_speed_10m_ms","solar_irradiance_kwm2"]
 CLIMATE = CLIMATE_RAW + [f"{x}_anom" for x in CLIMATE_RAW]
 CONFIGS = {"Full":CLIMATE+MACRO+COMMODITY+P,"Climate_only":CLIMATE+P,"Macro_only":MACRO+P,"Commodity_only":COMMODITY+P}
-MODEL_NAMES = ["RandomForest","XGBoost","ElasticNet","SVR","LightGBM","Stacking"]
+MODEL_NAMES = ["Stacking", "ElasticNet", "XGBoost", "SVR"]
 
 
 def cols_for(config, df):

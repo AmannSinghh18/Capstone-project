@@ -12,7 +12,7 @@ PROJECT = os.path.dirname(BASE)
 if PROJECT not in sys.path:
     sys.path.insert(0, PROJECT)
 
-from Phase_2_Model_Training.ts_wrappers import SARIMAXWrapper, AutoARIMAWrapper, VARXWrapper, RidgeARXWrapper
+from Phase_2_Model_Training.ts_wrappers import AutoARIMAWrapper, VARXWrapper, RidgeARXWrapper, DFMWrapper
 
 warnings.filterwarnings("ignore")
 
@@ -41,13 +41,19 @@ CONFIGS = {
     "Commodity_only": COMMODITY + P
 }
 GROUPS = {"Climate": CLIMATE, "Macroeconomic": MACRO, "Commodity": COMMODITY}
-MODEL_NAMES = ["SARIMAX", "AutoARIMA", "VARX", "Ridge_ARX"]
+MODEL_NAMES = ["DFM", "Ridge_ARX", "VARX", "AutoARIMA"]
 
 N_PERM = 100
 rng = np.random.default_rng(42)
 
 def extract_coefs(model, cols):
-    if hasattr(model, "pipeline"):
+    if hasattr(model, "pca") and hasattr(model, "ridge") and model.pca is not None:
+        n_comp = model.pca.n_components_
+        factor_weights = model.ridge.coef_[:n_comp]
+        direct_weights = model.ridge.coef_[n_comp:]
+        implied_weights = model.pca.components_.T @ factor_weights + direct_weights
+        return np.abs(implied_weights)
+    elif hasattr(model, "pipeline"):
         pipe = model.pipeline
         reg = pipe.named_steps[pipe.steps[-1][0]]
         if hasattr(reg, "coef_"):

@@ -44,7 +44,7 @@ CONFIGS = {
     "Macro_only": MACRO + P,
     "Commodity_only": COMMODITY + P
 }
-MODEL_NAMES = ["SARIMAX", "AutoARIMA", "VARX", "Ridge_ARX", "DFM"]
+MODEL_NAMES = ["DFM", "Ridge_ARX", "VARX", "AutoARIMA"]
 
 
 def cols_for(config, df):

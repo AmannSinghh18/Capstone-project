@@ -1,14 +1,18 @@
-import os, joblib, warnings
+import os, sys, joblib, warnings, copy
+os.environ["LOKY_MAX_CPU_COUNT"] = "4"
 import numpy as np
 import pandas as pd
 import shap
 from sklearn.metrics import root_mean_squared_error
-from sklearn.base import clone
 from scipy.stats import kendalltau
 
 warnings.filterwarnings("ignore")
 BASE=os.path.dirname(os.path.abspath(__file__))
 PROJECT=os.path.dirname(BASE)
+if PROJECT not in sys.path:
+    sys.path.insert(0, PROJECT)
+from Phase_2_Model_Training.train_lgbm_and_stacking import TimeSeriesStackingRegressor
+
 DATA=os.path.join(PROJECT,"data"); MODEL_DIR=os.path.join(PROJECT,"models")
 OUT=os.path.join(PROJECT,"outputs","tables"); os.makedirs(OUT,exist_ok=True)
 
@@ -20,20 +24,30 @@ RAW=["rainfall_total_mm","rainfall_rate_mm_per_day","temp_mean_celsius","relativ
 CLIMATE=RAW+[f"{x}_anom" for x in RAW]
 CONFIGS={"Full":CLIMATE+MACRO+COMMODITY+P,"Climate_only":CLIMATE+P,"Macro_only":MACRO+P,"Commodity_only":COMMODITY+P}
 GROUPS={"Climate":CLIMATE,"Macroeconomic":MACRO,"Commodity":COMMODITY}
-MODEL_NAMES=["RandomForest","XGBoost","ElasticNet","SVR"]
+MODEL_NAMES=["Stacking","ElasticNet","XGBoost","SVR"]
 N_PERM=100
 rng=np.random.default_rng(42)
 
-def shap_values(model, name, Xtr, Xte):
+def shap_values(model, name, Xtr, Xte, n_samples_override=None):
     pipe=hasattr(model,"named_steps"); reg=model.named_steps[model.steps[-1][0]] if pipe else model
-    if name in ("RandomForest","XGBoost"):
+    if name == "XGBoost":
         vals=shap.TreeExplainer(reg)(Xte).values
     elif name=="ElasticNet":
         scaler=model.named_steps["scaler"]
         vals=shap.LinearExplainer(reg,scaler.transform(Xtr))(scaler.transform(Xte)).values
-    else:
+    elif name=="Stacking":
+        cols=list(Xtr.columns)
+        def pred_fn(arr):
+            if not isinstance(arr, pd.DataFrame):
+                arr = pd.DataFrame(arr, columns=cols)
+            return model.predict(arr)
+        bg = shap.sample(Xtr, min(20, len(Xtr)), random_state=42)
+        ns = n_samples_override or 50
+        vals = shap.KernelExplainer(pred_fn, bg).shap_values(Xte, nsamples=ns, l1_reg="num_features(10)", silent=True)
+    else: # SVR
         scaler=model.named_steps["scaler"]; bg=shap.kmeans(scaler.transform(Xtr),min(20,len(Xtr)))
-        vals=shap.KernelExplainer(reg.predict,bg).shap_values(scaler.transform(Xte),nsamples=100,l1_reg="num_features(10)")
+        ns = n_samples_override or 100
+        vals=shap.KernelExplainer(reg.predict,bg).shap_values(scaler.transform(Xte),nsamples=ns,l1_reg="num_features(10)", silent=True)
     if isinstance(vals,list): vals=vals[0]
     return np.asarray(vals)
 
@@ -46,12 +60,15 @@ def group_shares(vals, cols):
 train=pd.read_csv(os.path.join(DATA,"train_processed.csv"))
 test=pd.read_csv(os.path.join(DATA,"test_processed.csv")); y=test[TARGET].to_numpy()
 nat=[]; var_rows=[]; gpfi=[]; stability=[]
+full_shap_shares = {}
 
 for mn in MODEL_NAMES:
     for cn, requested in CONFIGS.items():
         path=os.path.join(MODEL_DIR,f"{mn}_{cn}.joblib")
         if not os.path.isfile(path): continue
-        model=joblib.load(path); cols=[c for c in requested if c in test.columns]
+        model=joblib.load(path)
+        if not hasattr(model, "feature_weights"): model.feature_weights = None
+        cols=[c for c in requested if c in test.columns]
         Xtr,Xte=train[cols],test[cols]
         vals=shap_values(model,mn,Xtr,Xte)
         absmean=np.abs(vals).mean(axis=0)
@@ -63,6 +80,7 @@ for mn in MODEL_NAMES:
 
         # GPFI is evaluated on the Full configuration only.
         if cn=="Full":
+            full_shap_shares[mn] = shares
             base=root_mean_squared_error(y,model.predict(Xte))
             for cat,fs in GROUPS.items():
                 vc=[c for c in fs if c in cols]
@@ -100,17 +118,22 @@ pd.DataFrame(nat).to_csv(os.path.join(OUT,"phase4_ml_native_attribution.csv"),in
 for mn in MODEL_NAMES:
     path=os.path.join(MODEL_DIR,f"{mn}_Full.joblib")
     if not os.path.isfile(path): continue
-    base_model=joblib.load(path); cols=CONFIGS["Full"]
+    base_model=joblib.load(path)
+    if not hasattr(base_model, "feature_weights"): base_model.feature_weights = None
+    cols=CONFIGS["Full"]
     cols=[c for c in cols if c in train.columns]
     X=train[cols]; yt=train[TARGET].to_numpy()
     splits=[(tr,va) for tr,va in __import__("sklearn.model_selection",fromlist=["TimeSeriesSplit"]).TimeSeriesSplit(n_splits=5).split(X)]
     ranks=[]; shares=[]
     for tr,va in splits:
-        fm=clone(base_model); fm.fit(X.iloc[tr],yt[tr])
-        v=shap_values(fm,mn,X.iloc[tr],X.iloc[va]); s=group_shares(v,cols)
+        fm=copy.deepcopy(base_model)
+        if not hasattr(fm, "feature_weights"): fm.feature_weights = None
+        fm.fit(X.iloc[tr],yt[tr])
+        va_eval = X.iloc[va].iloc[::2] if mn == "Stacking" else X.iloc[va]
+        v=shap_values(fm,mn,X.iloc[tr],va_eval,n_samples_override=30 if mn in ("Stacking","SVR") else None); s=group_shares(v,cols)
         shares.append(s); ranks.append(pd.Series(s).rank(ascending=False))
     if shares:
-        overall=pd.Series(group_shares(shap_values(base_model,mn,train[cols],test[cols]),cols))
+        overall=pd.Series(full_shap_shares.get(mn, group_shares(shap_values(base_model,mn,train[cols],test[cols]),cols)))
         target_rank=overall.rank(ascending=False)
         tau=np.nanmean([kendalltau(pd.Series(r).reindex(target_rank.index), target_rank).statistic for r in ranks])
         for cat in GROUPS:

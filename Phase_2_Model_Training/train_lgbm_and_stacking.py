@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import lightgbm as lgb
 import xgboost as xgb
+from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.linear_model import ElasticNet, Ridge
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
@@ -44,44 +45,13 @@ CONFIGS = {
     "Commodity_only": COMMODITY + PERSISTENCE
 }
 
-train_df = pd.read_csv(os.path.join(DATA_DIR, "train_processed.csv"))
-test_df = pd.read_csv(os.path.join(DATA_DIR, "test_processed.csv"))
 
-print("==================================================")
-print("PHASE 2 (ML ENHANCEMENTS): LIGHTGBM & STACKING ENSEMBLE")
-print("==================================================")
-
-def train_models():
-    # 1. Train LightGBM across all 4 configurations
-    for config_name, feature_list in CONFIGS.items():
-        cols = [c for c in feature_list if c in train_df.columns]
-        X_tr, y_tr = train_df[cols], train_df[TARGET]
-        X_te, y_te = test_df[cols], test_df[TARGET]
-        
-        model = lgb.LGBMRegressor(
-            n_estimators=100,
-            learning_rate=0.03,
-            max_depth=3,
-            random_state=42,
-            n_jobs=1,
-            verbose=-1
-        )
-        model.fit(X_tr, y_tr)
-        pred_te = model.predict(X_te)
-        rmse = root_mean_squared_error(y_te, pred_te)
-        r2 = r2_score(y_te, pred_te)
-        print(f"LightGBM [{config_name}] -> Test RMSE: {rmse:.4f} | R2: {r2:.4f}")
-        
-        save_path = os.path.join(MODEL_DIR, f"LightGBM_{config_name}.joblib")
-        joblib.dump(model, save_path)
-
-
-
-# 2. TimeSeriesStackingRegressor Class for persistent serialization
-class TimeSeriesStackingRegressor:
+# TimeSeriesStackingRegressor Class for persistent serialization and clone compatibility
+class TimeSeriesStackingRegressor(BaseEstimator, RegressorMixin):
     """
     Time-Series Stacked Ensemble combining ElasticNet, XGBoost, and LightGBM
-    using Out-Of-Fold Validation predictions to train a non-negative Ridge Meta-Learner.
+    using Out-Of-Fold Chronological Validation predictions to train a non-negative Ridge Meta-Learner.
+    Inherits from BaseEstimator and RegressorMixin for compatibility with scikit-learn clone and SHAP.
     """
     def __init__(self, val_ratio=0.25):
         self.val_ratio = val_ratio
@@ -89,9 +59,19 @@ class TimeSeriesStackingRegressor:
         self.m_xgb = xgb.XGBRegressor(n_estimators=100, learning_rate=0.03, max_depth=3, random_state=42)
         self.m_lgb = lgb.LGBMRegressor(n_estimators=100, learning_rate=0.03, max_depth=3, random_state=42, n_jobs=1, verbose=-1)
         self.meta = Ridge(alpha=1.0, positive=True)
+        self.feature_names_in_ = None
+
+    def get_params(self, deep=True):
+        return {"val_ratio": self.val_ratio}
+
+    def set_params(self, **params):
+        for k, v in params.items():
+            setattr(self, k, v)
+        return self
 
     def fit(self, X, y):
-        X_df = X if isinstance(X, pd.DataFrame) else pd.DataFrame(X)
+        self.feature_names_in_ = list(X.columns) if isinstance(X, pd.DataFrame) else [f"f{i}" for i in range(X.shape[1])]
+        X_df = X if isinstance(X, pd.DataFrame) else pd.DataFrame(X, columns=self.feature_names_in_)
         y_ser = y if isinstance(y, pd.Series) else pd.Series(y)
         
         split_idx = int(len(X_df) * (1.0 - self.val_ratio))
@@ -105,9 +85,9 @@ class TimeSeriesStackingRegressor:
         
         # Predict on validation partition
         val_preds = np.column_stack([
-            self.m_en.predict(X_val),
-            self.m_xgb.predict(X_val),
-            self.m_lgb.predict(X_val)
+            self.m_en.predict(X_subtr.iloc[:0]) if len(X_val) == 0 else self.m_en.predict(X_val),
+            self.m_xgb.predict(X_subtr.iloc[:0]) if len(X_val) == 0 else self.m_xgb.predict(X_val),
+            self.m_lgb.predict(X_subtr.iloc[:0]) if len(X_val) == 0 else self.m_lgb.predict(X_val)
         ])
         self.meta.fit(val_preds, y_val)
         
@@ -118,7 +98,13 @@ class TimeSeriesStackingRegressor:
         return self
 
     def predict(self, X):
-        X_df = X if isinstance(X, pd.DataFrame) else pd.DataFrame(X)
+        if not isinstance(X, pd.DataFrame) and getattr(self, "feature_names_in_", None) is not None:
+            X_df = pd.DataFrame(X, columns=self.feature_names_in_)
+        elif isinstance(X, pd.DataFrame):
+            X_df = X
+        else:
+            X_df = pd.DataFrame(X)
+        
         base_preds = np.column_stack([
             self.m_en.predict(X_df),
             self.m_xgb.predict(X_df),
@@ -128,8 +114,13 @@ class TimeSeriesStackingRegressor:
 
 
 if __name__ == "__main__":
-    train_models()
-    # 3. Train Stacking Regressor across configurations
+    print("==================================================")
+    print("PHASE 2 (ML STREAMLINING): STACKING ENSEMBLE TRAINING")
+    print("==================================================")
+    train_df = pd.read_csv(os.path.join(DATA_DIR, "train_processed.csv"))
+    test_df = pd.read_csv(os.path.join(DATA_DIR, "test_processed.csv"))
+
+    # Train Stacking Regressor across 4 configurations
     for config_name in ["Full", "Commodity_only", "Macro_only", "Climate_only"]:
         cols = [c for c in CONFIGS[config_name] if c in train_df.columns]
         X_tr, y_tr = train_df[cols], train_df[TARGET]
@@ -145,5 +136,5 @@ if __name__ == "__main__":
         save_path = os.path.join(MODEL_DIR, f"Stacking_{config_name}.joblib")
         joblib.dump(stacker, save_path)
 
-    print("LightGBM & Stacking models successfully fitted and saved to models/")
+    print("Stacking models successfully fitted and saved to models/")
 

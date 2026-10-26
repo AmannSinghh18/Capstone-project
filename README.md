@@ -3,8 +3,8 @@
 An end-to-end, dual-paradigm empirical framework for forecasting and diagnosing the drivers of India's **Headline Consumer Price Index (CPI) Year-over-Year (YoY) Inflation**.
 
 This project implements a clean **5-Phase Unified Modular Architecture** integrating two distinct computational paradigms:
-1. **Machine Learning (ML) Paradigm** (ElasticNet, Random Forest, SVR, XGBoost, LightGBM, and Time-Series Stacking Ensemble with SHAP & GPFI attributions)
-2. **Time Series (TS) Econometric Paradigm** (SARIMAX, AutoARIMA, VARX, Ridge-ARX, and Dynamic Factor Models with SVAR Impulse Responses & FEVD)
+1. **Machine Learning (ML) Paradigm** (TimeSeriesStackingRegressor, ElasticNet, XGBoost, and SVR with SHAP & GPFI attributions)
+2. **Time Series (TS) Econometric Paradigm** (Dynamic Factor Models, Ridge-ARX, VARX, and AutoARIMA with SVAR Impulse Responses & FEVD)
 
 ---
 
@@ -28,8 +28,8 @@ Capstone-project/
 │   ├── SVR.ipynb                             # SVR grid search & checkpoint fitting
 │   ├── XGBoost.ipynb                         # XGBoost grid search & checkpoint fitting
 │   ├── train_lgbm_and_stacking.py            # LightGBM & Time-Series Stacking Ensemble models
-│   ├── ts_wrappers.py                        # Scikit-learn compliant wrappers (SARIMAX, AutoARIMA, VARX, Ridge-ARX, DFM)
-│   ├── run_phase2_ts_models.py               # Fits 16 baseline TS model-config combinations
+│   ├── ts_wrappers.py                        # Scikit-learn compliant wrappers (AutoARIMA, VARX, Ridge-ARX, DFM)
+│   ├── run_phase2_ts_models.py               # Fits baseline TS model-config combinations
 │   └── run_phase2_dfm_models.py              # Fits Dynamic Factor Models (FAVAR) across 4 configs
 │
 ├── Phase_3_Forecast_and_Evaluation/          # Phase 3: Accuracy, Multi-Horizon & Robustness Evaluation
@@ -51,7 +51,7 @@ Capstone-project/
 │   ├── train_processed.csv                   # 80% Chronological training set (2001-2020)
 │   └── test_processed.csv                    # 20% Chronological testing set (2021-2025)
 │
-├── models/                                   # Checkpoints for 44 Serialized Models (.joblib)
+├── models/                                   # Checkpoints for 32 Serialized Models (.joblib) (16 ML + 16 TS)
 ├── outputs/                                  # Exported CSV Result Tables
 │   └── tables/                               # Consolidated tables across all phases
 └── preprocessing/                            # Raw data sources (CPI, IIP, WPI, Climate, Global Macro)
@@ -74,20 +74,21 @@ Capstone-project/
 ## 🔬 Dual-Paradigm Methodology & Key Findings
 
 ### 1. Machine Learning (ML) Paradigm
-- **Models**: ElasticNet, Random Forest, SVR, XGBoost, LightGBM, and Stacking Ensemble (Super Learner).
+- **Streamlined 4-Model Core**: **TimeSeriesStackingRegressor** (Ensemble), **ElasticNet**, **XGBoost**, and **SVR**.
 - **Top Out-of-Sample Model**: **TimeSeriesStackingRegressor (Full config)** achieving **RMSE: 0.6343**, **MAE: 0.4674**, **MAPE: 13.61%**, **$R^2$: 0.8581**, outperforming the baseline ElasticNet (RMSE: 0.6679, $R^2$: 0.8427).
 - **Diagnostic Classification**:
-  - **Commodity**: **Core Driver** (69.61% SHAP share, Rank 1 standalone RMSE 0.8011, positive GPFI loss significant in 4/4 models).
-  - **Macroeconomic**: **Non-Linear Synergy** (21.49% SHAP share, Rank 2 standalone RMSE 0.8595, positive GPFI loss in 2/4 models).
-  - **Climate**: **Mixed / Inconclusive** (8.90% SHAP share, Rank 3 standalone RMSE 1.0653).
+  - **Commodity**: **Core Driver** (68.43% SHAP share, Rank 1 standalone RMSE 0.7604, positive GPFI loss significant in 4/4 models).
+  - **Macroeconomic**: **Redundant Driver** (24.34% SHAP share, Rank 2 standalone RMSE 0.8295, positive GPFI loss in 1/4 models).
+  - **Climate**: **Mixed / Inconclusive** (7.23% SHAP share, Rank 3 standalone RMSE 1.0117).
 
 ### 2. Time Series (TS) Econometric Paradigm
-- **Models**: SARIMAX, AutoARIMA, VARX, Ridge-ARX, and Dynamic Factor Models (FAVAR).
-- **Top Out-of-Sample Model**: **DFM (Macro_only config)** achieving **RMSE: 0.7853**, **$R^2$: 0.7825**, and **Ridge_ARX (Macro_only)** achieving **RMSE: 0.7864**, **$R^2$: 0.7819**.
+- **Streamlined 4-Model Core**: **Dynamic Factor Models (DFM / FAVAR)**, **Ridge-ARX**, **VARX**, and **AutoARIMA**.
+- **Top Out-of-Sample Model**: **DFM (Macro_only config)** achieving **RMSE: 0.7853**, **$R^2$: 0.7825**, followed closely by **Ridge_ARX (Macro_only)** achieving **RMSE: 0.7864**, **$R^2$: 0.7819**.
+- **Structural Causal Diagnostic**: **SVAR** (Structural Vector Autoregression) estimating Orthogonalized Impulse Response Functions (IRF) and Forecast Error Variance Decomposition (FEVD).
 - **Diagnostic Classification**:
-  - **Macroeconomic**: **Synergistic Driver** (30.54% Econometric share, Rank 1 standalone RMSE 0.8033).
-  - **Commodity**: **Synergistic Driver** (28.37% Econometric share, Rank 2 standalone RMSE 1.0032).
-  - **Climate**: **Mixed / Inconclusive** (41.09% Econometric share, Rank 3 standalone RMSE 1.2630).
+  - **Commodity**: **Core Driver** (36.47% Econometric share, Rank 1 native attribution, Rank 2 standalone RMSE 0.9560, positive GPFI loss significant in 4/4 models).
+  - **Macroeconomic**: **Synergistic Driver** (34.42% Econometric share, Rank 1 standalone RMSE 0.7898, positive GPFI loss in 2/4 models).
+  - **Climate**: **Mixed / Inconclusive** (29.12% Econometric share, Rank 3 standalone RMSE 1.1510).
 
 ### 3. Multi-Horizon Forecasting ($h = 1, 3, 6, 12$ Months)
 - **Short-Horizon Dominance ($h = 1$)**: Commodity features achieve the lowest RMSE (**1.1778**), driving immediate food-price spikes.

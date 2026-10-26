@@ -51,6 +51,7 @@ consensus = pd.DataFrame(consensus)
 tri = []
 full_acc = acc[acc["Config"] == "Full"]
 full_rmse = full_acc.groupby("Model")["RMSE"].first()
+native_ranks = consensus.set_index("Category")["Mean_Econometric_Share_%"].rank(ascending=False, method="min").astype(int)
 
 for cat in CATS:
     conf = CAT_CONFIG[cat]
@@ -64,10 +65,9 @@ for cat in CATS:
     tri.append({
         "Category": cat,
         "Mean_Econometric_Share_%": native.mean(),
-        "Native_Rank": int(consensus.loc[consensus.Category == cat, "Mean_Econometric_Share_%"].rank(
-            ascending=False, method="min"
-        ).iloc[0]),
+        "Native_Rank": int(native_ranks[cat]),
         "Category_only_Mean_RMSE": ca["RMSE"].mean(),
+
         "Category_only_RMSE_Rank": int(
             acc[acc["Config"].isin([CAT_CONFIG[c] for c in CATS])]
             .groupby("Config")["RMSE"].mean()
