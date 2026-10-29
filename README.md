@@ -36,6 +36,7 @@ Capstone-project/
 ├── Phase_3_Forecast_and_Evaluation/          # Phase 3: Accuracy, Multi-Horizon & Robustness Evaluation
 │   ├── run_phase3_ml_accuracy.py             # ML test set accuracy (RMSE, MAE, MAPE, R²) & HLN DM tests
 │   ├── run_phase3_ts_accuracy.py             # TS test set accuracy (RMSE, MAE, MAPE, R²) & HLN DM tests
+│   ├── generate_paper_figures.py             # Publication figure generator (Loss curves, forecasts, GPFI)
 │   ├── run_multi_horizon_forecasting.py      # Multi-horizon direct forecasting (h=1, 3, 6, 12 months)
 │   └── run_walk_forward_and_conformal.py     # Rolling walk-forward backtesting & 90%/95% Conformal Prediction intervals
 │
@@ -53,8 +54,9 @@ Capstone-project/
 │   └── test_processed.csv                    # 20% Chronological testing set (2021-2025)
 │
 ├── models/                                   # Checkpoints for 32 Serialized Models (.joblib) (16 ML + 16 TS)
-├── outputs/                                  # Exported CSV Result Tables
-│   └── tables/                               # Consolidated tables across all phases
+├── outputs/                                  # Exported Analytical Tables & Figures
+│   ├── tables/                               # Consolidated tables across all phases
+│   └── figures/                              # High-resolution (300 DPI) publication figures
 └── preprocessing/                            # Raw data sources (CPI, IIP, WPI, Climate, Global Macro)
 ```
 
